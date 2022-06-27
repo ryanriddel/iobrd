@@ -21,7 +21,7 @@ namespace ioboard_tester
         SerialPort sPort;
 
         //This synchronizes the serial processing thread with the datareceived event on the SerialPort.
-        //This is redundant, and I should just check for BytesToRead in the serial processing thread
+        //This is redundant, and one could just check for BytesToRead in the serial processing thread
         ManualResetEvent serialDataReceivedEvent;
 
 
@@ -273,21 +273,21 @@ namespace ioboard_tester
         {
             byte[] msg = setOutputStateCmdBytes(outputNum, state);
 
-            return (doSerialTransaction(msg)[4] == 0x01 ? true : false);
+            return (doSerialTransaction(msg)[4] == 0x0B2 ? true : false);
         }
 
         bool addPulsesToMeterOUT2(int numPulses)
         {
             byte[] msg = setMeter1PulsesCmdBytes(numPulses);
 
-            return (doSerialTransaction(msg)[4] == 0x01 ? true : false);
+            return (doSerialTransaction(msg)[4] == 0xB3 ? true : false);
         }
 
         bool addPulsesToMeterOUT8(int numPulses)
         {
             byte[] msg = setMeter2PulsesCmdBytes(numPulses);
 
-            return (doSerialTransaction(msg)[4] == 0x01 ? true : false);
+            return (doSerialTransaction(msg)[4] == 0xB7 ? true : false);
         }
 
         void clearErrors()
@@ -408,8 +408,7 @@ namespace ioboard_tester
         }
         private void button3_Click(object sender, EventArgs e)
         {
-            //software version
-            AppendSentBox(BitConverter.ToString(getSoftwareVer()));
+            getSoftwareVer();
         }
 
         private void button2_Click_1(object sender, EventArgs e)
@@ -424,7 +423,7 @@ namespace ioboard_tester
 
         private void button4_Click(object sender, EventArgs e)
         {
-            AppendSentBox(BitConverter.ToString(getHardwareVer()));
+            getHardwareVer();
         }
 
         
@@ -442,7 +441,7 @@ namespace ioboard_tester
 
         private void button8_Click(object sender, EventArgs e)
         {
-            AppendSentBox(BitConverter.ToString(getAllInputs()));
+            getAllInputs();
         }
 
 
