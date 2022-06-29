@@ -18,7 +18,7 @@ namespace ioboard_tester
 
     public partial class Form1 : Form
     {
-        SerialPort sPort;
+        SerialPort _serialPort;
 
         //This synchronizes the serial processing thread with the datareceived event on the SerialPort.
         //This is redundant, and one could just check for BytesToRead in the serial processing thread
@@ -205,7 +205,7 @@ namespace ioboard_tester
         //note that this function will return null if there is a timeout
         byte[] doSerialTransaction(byte[] msg)
         {
-            sPort.Write(msg, 0, msg.Length);
+            _serialPort.Write(msg, 0, msg.Length);
             byte cmdByte = msg[4];
 
             AppendSentBox(BitConverter.ToString(msg));
@@ -294,15 +294,15 @@ namespace ioboard_tester
         {
             byte[] msg = { 0x58, 0x59, 0xC0, 0x01, 0xC1 };
 
-            sPort.Write(msg, 0, msg.Length);
+            _serialPort.Write(msg, 0, msg.Length);
             AppendSentBox(BitConverter.ToString(msg));
         }
 
-        private void SPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        private void _serialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            while (sPort.BytesToRead > 0)
+            while (_serialPort.BytesToRead > 0)
             {
-                int temp = sPort.ReadByte();
+                int temp = _serialPort.ReadByte();
                 if (temp != -1)
                 {
                     serialByteQueue.Enqueue((byte)temp);
@@ -326,25 +326,25 @@ namespace ioboard_tester
             {
                 if (btnConnect.Text == "Connect")
                 {
-                    sPort = new SerialPort(comboBox1.Text, Convert.ToInt32(textBox1.Text));
+                    _serialPort = new SerialPort(comboBox1.Text, Convert.ToInt32(textBox1.Text));
 
-                    sPort.Open();
-                    sPort.DataReceived += SPort_DataReceived;
+                    _serialPort.Open();
+                    _serialPort.DataReceived += _serialPort_DataReceived;
 
 
 
-                    if (sPort.IsOpen)
+                    if (_serialPort.IsOpen)
                     {
                         btnConnect.Text = "Disconnect";
                     }
                 }
                 else if (btnConnect.Text == "Disconnect")
                 {
-                    if (sPort.IsOpen)
+                    if (_serialPort.IsOpen)
                     {
-                        sPort.Close();
+                        _serialPort.Close();
 
-                        sPort.Dispose();
+                        _serialPort.Dispose();
                     }
                     btnConnect.Text = "Connect";
                 }
