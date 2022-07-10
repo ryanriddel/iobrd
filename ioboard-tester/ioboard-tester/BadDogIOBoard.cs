@@ -21,12 +21,22 @@ namespace ioboard_tester
             }
         }
 
-        public class SerialMessageReceived : EventArgs
+        public class SerialMessageReceivedEventArgs : EventArgs
         {
             public byte[] messageBytes;
-            public SerialMessageReceived(byte[] state)
+            public SerialMessageReceivedEventArgs(byte[] state)
             {
                 messageBytes = state;
+            }
+        }
+
+        public class CoinInOutPulsesReceivedEventArgs : EventArgs
+        {
+            public byte numPulses;
+            
+            public CoinInOutPulsesReceivedEventArgs(byte pulses)
+            {
+                numPulses = pulses;
             }
         }
 
@@ -34,7 +44,11 @@ namespace ioboard_tester
         //the eventargs contain a 3 byte array, which is a bitmap of the state of the 24 inputs (0=LOW, 1=HIGH)
         public event EventHandler<InputChangedEventArgs> InputChanged;
 
-        public event EventHandler<SerialMessageReceived> MessageReceived;
+        //raised when a complete message is received from the io board
+        public event EventHandler<SerialMessageReceivedEventArgs> SerialMessageReceived;
+
+        //raised when a series of pulses are raised on IN18
+        //public event EventHandler<CoinInOutPulsesReceivedEventArgs> CoinInOutPulsesReceived;
 
         public SerialPort _serialPort;
         private Thread serialParserThread;
@@ -78,7 +92,7 @@ namespace ioboard_tester
                 }
 
 
-                _serialPort.DataReceived += _serialPort_DataReceived;
+               
                 return true;
             }
             else
@@ -163,15 +177,24 @@ namespace ioboard_tester
         public bool addPulsesToMeterOUT2(int numPulses)
         {
             byte[] msg = setMeter1PulsesCmdBytes(numPulses);
+            byte[] resp = doSerialTransaction(msg);
 
-            return (doSerialTransaction(msg)[4] == 0xB3 ? true : false);
+            if (resp == null)
+                return false;
+            else
+                return (resp[4]==0xB3? true : false);
         }
 
         public bool addPulsesToMeterOUT8(int numPulses)
         {
             byte[] msg = setMeter2PulsesCmdBytes(numPulses);
 
-            return (doSerialTransaction(msg)[4] == 0xB7 ? true : false);
+            byte[] resp = doSerialTransaction(msg);
+
+            if (resp == null)
+                return false;
+            else
+                return (resp[4] == 0xB7 ? true : false);
         }
 
         public void clearErrors()
@@ -196,24 +219,33 @@ namespace ioboard_tester
             for (int i = 0; i < responseBytes.Length; i++) newArray[i] = responseBytes[i];
             
 
-            MessageReceived?.Invoke(this, new SerialMessageReceived(responseBytes));
+            SerialMessageReceived?.Invoke(this, new SerialMessageReceivedEventArgs(responseBytes));
 
             if (commandByte == 0xA6)
             {
-                //this is an io-board initiated message which indicates a falling edge on an input
+                //we received an io-board initiated message which indicates a falling edge on an input
                 byte[] inputMap = { responseBytes[5], responseBytes[6], responseBytes[7] };
 
                 InputChanged?.Invoke(this, new InputChangedEventArgs(inputMap));
             }
+            else if(commandByte == 0xA5)
+            {
+                //A number of pulses have been received on input 18 (this functionality is usually used to detected coin in/out)
+                byte numPulses = responseBytes[5];
+                //CoinInOutPulsesReceived?.Invoke(this, new CoinInOutPulsesReceivedEventArgs(numPulses));
+                throw new Exception("Not implemented...someone pressed IN18!");
+
+            }
             else if (synchronizationEventDictionary.ContainsKey(commandByte))
             {
                 //this synchronizes the method that initiated this response with the return value
-                synchronizationReturnValues[commandByte] = newArray;
+                synchronizationReturnValues[commandByte] = responseBytes;
                 synchronizationEventDictionary[commandByte].Set();
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("PROBLEM");
+                //a valid message has been received but its handling has not been implemented yet
+                System.Diagnostics.Debug.WriteLine("An undefined message has been received.");
             }
 
             
@@ -237,7 +269,6 @@ namespace ioboard_tester
                     }
                 }
 
-                //serialDataReceivedEvent.Reset(); //reset immediately in case new data is received while processing
 
                 if (serialByteQueue.Count > 2)
                 {
@@ -328,12 +359,11 @@ namespace ioboard_tester
             _serialPort.Write(msg, 0, msg.Length);
 
             
-
             if (synchronizationEventDictionary[cmdByte].WaitOne(serialResponseTimeoutMilliseconds))
             {
                 byte[] res = synchronizationReturnValues[cmdByte];
                 synchronizationEventDictionary[cmdByte].Reset();
-                //synchronizationReturnValues[cmdByte] = null;
+
                 return res;
             }
             else
@@ -342,22 +372,6 @@ namespace ioboard_tester
                 System.Diagnostics.Debug.WriteLine("Uh oh.");
                 return null;
             }
-        }
-
-        private void _serialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            /*while (_serialPort.BytesToRead > 0)
-            {
-                int temp = _serialPort.ReadByte();
-                if (temp != -1)
-                {
-                    serialByteQueue.Enqueue((byte)temp);
-                }
-            }
-
-
-            serialDataReceivedEvent.Set();*/
-
         }
 
 
@@ -375,13 +389,13 @@ namespace ioboard_tester
 
         private const int serialResponseTimeoutMilliseconds = 1000;
 
-        public byte[] getCommTestCmdBytes = { 0x58, 0x59, 0xF0, 0x01, 0xF1 };
-        public byte[] getSoftwareVerCmdBytes = { 0x58, 0x59, 0xF3, 0x01, 0xF2 };
-        public byte[] getHardwareVerCmdBytes = { 0x58, 0x59, 0xF2, 0x01, 0xF3 };
+        public readonly byte[] getCommTestCmdBytes = { 0x58, 0x59, 0xF0, 0x01, 0xF1 };
+        public readonly byte[] getSoftwareVerCmdBytes = { 0x58, 0x59, 0xF3, 0x01, 0xF2 };
+        public readonly byte[] getHardwareVerCmdBytes = { 0x58, 0x59, 0xF2, 0x01, 0xF3 };
 
-        public byte[] getAllInputsCmdBytes = { 0x58, 0x59, 0xA0, 0x01, 0xA1 };
-        public byte[] getOutputStatesCmdBytes = { 0x58, 0x59, 0xA2, 0x01, 0xA2 };
-        public byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
+        public readonly byte[] getAllInputsCmdBytes = { 0x58, 0x59, 0xA0, 0x01, 0xA1 };
+        public readonly byte[] getOutputStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA2 };
+        public readonly byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
 
         public byte[] setOutputStateCmdBytes(byte outputNum, byte state) //state: 0=high impedance, 1=enabled
         {

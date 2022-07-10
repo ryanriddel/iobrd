@@ -25,13 +25,19 @@ namespace ioboard_tester
         {
             InitializeComponent();
             baddog = new BadDogIOBoard();
-            baddog.MessageReceived += Baddog_MessageReceived;
+            //baddog.SerialMessageReceived += Baddog_MessageReceived;
+            baddog.InputChanged += Baddog_InputChanged;
 
         }
 
-        private void Baddog_MessageReceived(object sender, BadDogIOBoard.SerialMessageReceived e)
+        private void Baddog_InputChanged(object sender, BadDogIOBoard.InputChangedEventArgs e)
         {
-            //AppendReceivedBox(BitConverter.ToString(e.messageBytes));
+            System.Diagnostics.Debug.WriteLine("Input changed: " + BitConverter.ToString(e.inputStates));
+        }
+
+        private void Baddog_MessageReceived(object sender, BadDogIOBoard.SerialMessageReceivedEventArgs e)
+        {
+           AppendReceivedBox(BitConverter.ToString(e.messageBytes));
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -138,9 +144,11 @@ namespace ioboard_tester
         private void button4_Click(object sender, EventArgs e)
         {
             byte[] resp = baddog.getHardwareVer();
+
+            AppendSentBox(BitConverter.ToString(baddog.getHardwareVerCmdBytes)); 
             if (resp != null)
             {
-                AppendSentBox(BitConverter.ToString(baddog.getHardwareVerCmdBytes));
+                AppendReceivedBox(BitConverter.ToString(resp));
             }
         }
 
@@ -149,6 +157,7 @@ namespace ioboard_tester
         private void button6_Click(object sender, EventArgs e)
         {
             bool resp = baddog.addPulsesToMeterOUT2(100);
+            AppendReceivedBox(resp.ToString());
         }
 
        
@@ -179,6 +188,11 @@ namespace ioboard_tester
         private void button12_Click(object sender, EventArgs e)
         {
             byte[] resp = baddog.getOutputStates();
+            AppendSentBox(BitConverter.ToString(baddog.getOutputStatesCmdBytes));
+            if (resp != null)
+            {
+                AppendReceivedBox(BitConverter.ToString(resp));
+            }
         }
 
         private void txtIONumInput_TextChanged(object sender, EventArgs e)
@@ -212,7 +226,7 @@ namespace ioboard_tester
 
         private void button9_Click(object sender, EventArgs e)
         {
-            bool resp = baddog.setOutputState((byte)(checkBoxOutput.Checked ? 1 : 0), Convert.ToByte(txtIONumOutput.Text));
+            bool resp = baddog.setOutputState(Convert.ToByte(txtIONumOutput.Text),(byte)(checkBoxOutput.Checked ? 1 : 0));
         }
 
        
@@ -224,12 +238,5 @@ namespace ioboard_tester
 
         
     }
-    public class InputChangedEventArgs : EventArgs
-    {
-        byte[] inputStates;
-        public InputChangedEventArgs(byte[] state)
-        {
-            inputStates = new byte[] { state[0], state[1], state[2] };
-        }
-    }
+    
 }
