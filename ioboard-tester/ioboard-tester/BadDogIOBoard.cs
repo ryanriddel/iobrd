@@ -17,7 +17,7 @@ namespace ioboard_tester
             public byte[] inputStates;
             public InputChangedEventArgs(byte[] state)
             {
-                inputStates = new byte[] { state[0], state[1], state[2] };
+                inputStates = state;
             }
         }
 
@@ -30,7 +30,7 @@ namespace ioboard_tester
             }
         }
 
-        public class CoinInOutPulsesReceivedEventArgs : EventArgs
+        /*public class CoinInOutPulsesReceivedEventArgs : EventArgs
         {
             public byte numPulses;
             
@@ -38,7 +38,7 @@ namespace ioboard_tester
             {
                 numPulses = pulses;
             }
-        }
+        }*/
 
         //raised when a falling edge is detected on an input
         //the eventargs contain a 3 byte array, which is a bitmap of the state of the 24 inputs (0=LOW, 1=HIGH)
@@ -91,8 +91,6 @@ namespace ioboard_tester
                     serialParserThread.Start();
                 }
 
-
-               
                 return true;
             }
             else
@@ -155,7 +153,7 @@ namespace ioboard_tester
                 return null;
         }
 
-        public byte[] getSwitchStates()
+        /*public byte[] getSwitchStates()
         {
             byte[] msg = getSwitchStatesCmdBytes;
             byte[] response = doSerialTransaction(msg);
@@ -164,14 +162,17 @@ namespace ioboard_tester
                 return new byte[] { response[5], response[6], response[7] };
             else
                 return null;
-        }
+        }*/
 
         public bool setOutputState(byte outputNum, byte state)
         {
             byte[] msg = setOutputStateCmdBytes(outputNum, state);
+            byte[] response = doSerialTransaction(msg);
 
-
-            return (doSerialTransaction(msg)[4] == 0xB2 ? true : false);
+            if (response != null)
+                return response[4] == 0xB2 ? true : false;
+            else
+                return false;
         }
 
         public bool addPulsesToMeterOUT2(int numPulses)
@@ -182,7 +183,7 @@ namespace ioboard_tester
             if (resp == null)
                 return false;
             else
-                return (resp[4]==0xB3? true : false);
+                return resp[4] == 0xB3 ? true : false;
         }
 
         public bool addPulsesToMeterOUT8(int numPulses)
@@ -194,7 +195,7 @@ namespace ioboard_tester
             if (resp == null)
                 return false;
             else
-                return (resp[4] == 0xB7 ? true : false);
+                return resp[4] == 0xB7 ? true : false;
         }
 
         public void clearErrors()
@@ -203,11 +204,6 @@ namespace ioboard_tester
 
             _serialPort.Write(msg, 0, msg.Length);
         }
-
-
-
-
-
 
 
 
@@ -231,10 +227,16 @@ namespace ioboard_tester
             else if(commandByte == 0xA5)
             {
                 //A number of pulses have been received on input 18 (this functionality is usually used to detected coin in/out)
-                byte numPulses = responseBytes[5];
-                //CoinInOutPulsesReceived?.Invoke(this, new CoinInOutPulsesReceivedEventArgs(numPulses));
-                throw new Exception("Not implemented...someone pressed IN18!");
+                //this is an annoying message that i have not figured out how to disable.  for now, do not use this functionality and ignore this message
 
+                //byte numPulses = responseBytes[5];
+                //CoinInOutPulsesReceived?.Invoke(this, new CoinInOutPulsesReceivedEventArgs(numPulses));
+                System.Diagnostics.Debug.WriteLine("Not implemented...someone changed IN18!");
+
+            }
+            else if(commandByte == 0xD1)
+            {
+                throw new Exception("The board didnt understand the command...");
             }
             else if (synchronizationEventDictionary.ContainsKey(commandByte))
             {
@@ -248,11 +250,10 @@ namespace ioboard_tester
                 System.Diagnostics.Debug.WriteLine("An undefined message has been received.");
             }
 
-            
-
         }
 
         private ConcurrentQueue<byte> serialByteQueue = new ConcurrentQueue<byte>();
+
         //this should be run in its own thread
         private void doSerialParser()
         {
@@ -369,7 +370,7 @@ namespace ioboard_tester
             else
             {
                 //timeout, no response received
-                System.Diagnostics.Debug.WriteLine("Uh oh.");
+                System.Diagnostics.Debug.WriteLine("Command timed out: " + cmdByte);
                 return null;
             }
         }
@@ -395,7 +396,7 @@ namespace ioboard_tester
 
         public readonly byte[] getAllInputsCmdBytes = { 0x58, 0x59, 0xA0, 0x01, 0xA1 };
         public readonly byte[] getOutputStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA2 };
-        public readonly byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
+        //public readonly byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
 
         public byte[] setOutputStateCmdBytes(byte outputNum, byte state) //state: 0=high impedance, 1=enabled
         {

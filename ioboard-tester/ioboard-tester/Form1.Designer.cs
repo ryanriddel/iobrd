@@ -54,11 +54,10 @@ namespace ioboard_tester
             this.txtIONumOutput = new System.Windows.Forms.TextBox();
             this.button10 = new System.Windows.Forms.Button();
             this.panel3 = new System.Windows.Forms.Panel();
+            this.textBox2 = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.txtIONumInput = new System.Windows.Forms.TextBox();
-            this.button11 = new System.Windows.Forms.Button();
             this.button12 = new System.Windows.Forms.Button();
-            this.textBox2 = new System.Windows.Forms.TextBox();
             this.button13 = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
@@ -311,6 +310,14 @@ namespace ioboard_tester
             this.panel3.Size = new System.Drawing.Size(353, 40);
             this.panel3.TabIndex = 17;
             // 
+            // textBox2
+            // 
+            this.textBox2.Location = new System.Drawing.Point(286, 9);
+            this.textBox2.Name = "textBox2";
+            this.textBox2.ReadOnly = true;
+            this.textBox2.Size = new System.Drawing.Size(62, 22);
+            this.textBox2.TabIndex = 18;
+            // 
             // label6
             // 
             this.label6.AutoSize = true;
@@ -328,33 +335,15 @@ namespace ioboard_tester
             this.txtIONumInput.TabIndex = 17;
             this.txtIONumInput.TextChanged += new System.EventHandler(this.txtIONumInput_TextChanged);
             // 
-            // button11
-            // 
-            this.button11.Location = new System.Drawing.Point(18, 262);
-            this.button11.Name = "button11";
-            this.button11.Size = new System.Drawing.Size(139, 26);
-            this.button11.TabIndex = 18;
-            this.button11.Text = "Get Switch States";
-            this.button11.UseVisualStyleBackColor = true;
-            this.button11.Click += new System.EventHandler(this.button11_Click);
-            // 
             // button12
             // 
-            this.button12.Location = new System.Drawing.Point(19, 294);
+            this.button12.Location = new System.Drawing.Point(18, 262);
             this.button12.Name = "button12";
             this.button12.Size = new System.Drawing.Size(139, 26);
             this.button12.TabIndex = 19;
             this.button12.Text = "Get Output States";
             this.button12.UseVisualStyleBackColor = true;
             this.button12.Click += new System.EventHandler(this.button12_Click);
-            // 
-            // textBox2
-            // 
-            this.textBox2.Location = new System.Drawing.Point(286, 9);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.ReadOnly = true;
-            this.textBox2.Size = new System.Drawing.Size(62, 22);
-            this.textBox2.TabIndex = 18;
             // 
             // button13
             // 
@@ -373,7 +362,6 @@ namespace ioboard_tester
             this.ClientSize = new System.Drawing.Size(780, 465);
             this.Controls.Add(this.button13);
             this.Controls.Add(this.button12);
-            this.Controls.Add(this.button11);
             this.Controls.Add(this.panel3);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.button8);
@@ -432,7 +420,6 @@ namespace ioboard_tester
         private System.Windows.Forms.Panel panel3;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox txtIONumInput;
-        private System.Windows.Forms.Button button11;
         private System.Windows.Forms.Button button12;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button13;

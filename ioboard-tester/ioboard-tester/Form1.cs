@@ -33,6 +33,7 @@ namespace ioboard_tester
         private void Baddog_InputChanged(object sender, BadDogIOBoard.InputChangedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Input changed: " + BitConverter.ToString(e.inputStates));
+            AppendReceivedBox(BitConverter.ToString(e.inputStates));
         }
 
         private void Baddog_MessageReceived(object sender, BadDogIOBoard.SerialMessageReceivedEventArgs e)
@@ -48,7 +49,6 @@ namespace ioboard_tester
                 if (btnConnect.Text == "Connect")
                 {
                     bool success = baddog.initializeBoard(comboBox1.Text, Convert.ToInt32(textBox1.Text));
-
 
                     if (success)
                     {
@@ -180,7 +180,7 @@ namespace ioboard_tester
 
         private void button11_Click(object sender, EventArgs e)
         {
-            byte[] resp = baddog.getSwitchStates();
+            
         }
 
         
@@ -206,12 +206,7 @@ namespace ioboard_tester
             byte pinNum = (byte)Int16.Parse(txtIONumInput.Text);
             byte[] inputs = baddog.getInputStates();
 
-            if ((inputs[(int)((pinNum + 1) / 8)] & (byte)(2 ^ (pinNum % 8))) == 1)
-            {
-                textBox2.Text = "HIGH";
-            }
-            else
-                textBox2.Text = "LOW";
+
 
             if (inputs != null)
             {
@@ -219,8 +214,17 @@ namespace ioboard_tester
                     System.Diagnostics.Debug.WriteLine(inputs[i]);
             }
             else
+            {
                 System.Diagnostics.Debug.WriteLine("ERROR");
-            //requestStateOfAllInputs();
+                return;
+            }
+
+            if ((inputs[(int)((pinNum + 1) / 8)] & (byte)(2 ^ (pinNum % 8))) == 1)
+            {
+                textBox2.Text = "HIGH";
+            }
+            else
+                textBox2.Text = "LOW";
         }
 
 
