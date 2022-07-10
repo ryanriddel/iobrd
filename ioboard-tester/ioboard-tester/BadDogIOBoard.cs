@@ -14,10 +14,19 @@ namespace ioboard_tester
     {
         public class InputChangedEventArgs : EventArgs
         {
-            byte[] inputStates;
+            public byte[] inputStates;
             public InputChangedEventArgs(byte[] state)
             {
                 inputStates = new byte[] { state[0], state[1], state[2] };
+            }
+        }
+
+        public class SerialMessageReceived : EventArgs
+        {
+            public byte[] messageBytes;
+            public SerialMessageReceived(byte[] state)
+            {
+                messageBytes = state;
             }
         }
 
@@ -25,7 +34,9 @@ namespace ioboard_tester
         //the eventargs contain a 3 byte array, which is a bitmap of the state of the 24 inputs (0=LOW, 1=HIGH)
         public event EventHandler<InputChangedEventArgs> InputChanged;
 
-        private SerialPort _serialPort;
+        public event EventHandler<SerialMessageReceived> MessageReceived;
+
+        public SerialPort _serialPort;
         private Thread serialParserThread;
 
         public BadDogIOBoard()
@@ -108,8 +119,11 @@ namespace ioboard_tester
         {
             byte[] msg = getAllInputsCmdBytes;
             byte[] response = doSerialTransaction(msg);
-            
-            return new byte[] { response[5], response[6], response[7] };
+
+            if (response != null)
+                return new byte[] { response[5], response[6], response[7] };
+            else
+                return null;
         }
 
         /// <summary>
@@ -121,7 +135,10 @@ namespace ioboard_tester
             byte[] msg = getOutputStatesCmdBytes;
             byte[] response = doSerialTransaction(msg);
 
-            return new byte[] { response[5], response[6], response[7] };
+            if (response != null)
+                return new byte[] { response[5], response[6], response[7] };
+            else
+                return null;
         }
 
         public byte[] getSwitchStates()
@@ -129,12 +146,16 @@ namespace ioboard_tester
             byte[] msg = getSwitchStatesCmdBytes;
             byte[] response = doSerialTransaction(msg);
 
-            return new byte[] { response[5], response[6], response[7] };
+            if (response != null)
+                return new byte[] { response[5], response[6], response[7] };
+            else
+                return null;
         }
 
         public bool setOutputState(byte outputNum, byte state)
         {
             byte[] msg = setOutputStateCmdBytes(outputNum, state);
+
 
             return (doSerialTransaction(msg)[4] == 0xB2 ? true : false);
         }
@@ -171,12 +192,11 @@ namespace ioboard_tester
         {
             byte commandByte = responseBytes[4];
 
-            if (synchronizationEventDictionary.ContainsKey(commandByte))
-            {
-                //this synchronizes the method that initiated this response with the return value
-                synchronizationReturnValues[commandByte] = responseBytes;
-                synchronizationEventDictionary[commandByte].Set();
-            }
+            byte[] newArray = new byte[responseBytes.Length];
+            for (int i = 0; i < responseBytes.Length; i++) newArray[i] = responseBytes[i];
+            
+
+            MessageReceived?.Invoke(this, new SerialMessageReceived(responseBytes));
 
             if (commandByte == 0xA6)
             {
@@ -185,6 +205,18 @@ namespace ioboard_tester
 
                 InputChanged?.Invoke(this, new InputChangedEventArgs(inputMap));
             }
+            else if (synchronizationEventDictionary.ContainsKey(commandByte))
+            {
+                //this synchronizes the method that initiated this response with the return value
+                synchronizationReturnValues[commandByte] = newArray;
+                synchronizationEventDictionary[commandByte].Set();
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("PROBLEM");
+            }
+
+            
 
         }
 
@@ -192,9 +224,20 @@ namespace ioboard_tester
         //this should be run in its own thread
         private void doSerialParser()
         {
-            while (serialDataReceivedEvent.WaitOne())
+            while (true)
             {
-                serialDataReceivedEvent.Reset(); //reset immediately in case new data is received while processing
+                Thread.Sleep(25);
+
+                while (_serialPort.BytesToRead > 0)
+                {
+                    int temp = _serialPort.ReadByte();
+                    if (temp != -1)
+                    {
+                        serialByteQueue.Enqueue((byte)temp);
+                    }
+                }
+
+                //serialDataReceivedEvent.Reset(); //reset immediately in case new data is received while processing
 
                 if (serialByteQueue.Count > 2)
                 {
@@ -237,6 +280,8 @@ namespace ioboard_tester
                                 else
                                 {
                                     //uh oh...checksum was incorrect.  discard message.
+
+                                    System.Diagnostics.Debug.WriteLine("BAD CHECKSUM: " + BitConverter.ToString(responseBytes));
                                 }
                             }
                             else
@@ -273,15 +318,23 @@ namespace ioboard_tester
         //note that this function will return null if there is a timeout
         private byte[] doSerialTransaction(byte[] msg)
         {
-            _serialPort.Write(msg, 0, msg.Length);
             byte cmdByte = msg[4];
 
             if (!synchronizationEventDictionary.ContainsKey(cmdByte))
                 synchronizationEventDictionary[cmdByte] = new ManualResetEvent(false);
+            
+            synchronizationReturnValues[cmdByte] = null;
+
+            _serialPort.Write(msg, 0, msg.Length);
+
+            
 
             if (synchronizationEventDictionary[cmdByte].WaitOne(serialResponseTimeoutMilliseconds))
             {
-                return synchronizationReturnValues[cmdByte];
+                byte[] res = synchronizationReturnValues[cmdByte];
+                synchronizationEventDictionary[cmdByte].Reset();
+                //synchronizationReturnValues[cmdByte] = null;
+                return res;
             }
             else
             {
@@ -293,7 +346,7 @@ namespace ioboard_tester
 
         private void _serialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            while (_serialPort.BytesToRead > 0)
+            /*while (_serialPort.BytesToRead > 0)
             {
                 int temp = _serialPort.ReadByte();
                 if (temp != -1)
@@ -303,7 +356,7 @@ namespace ioboard_tester
             }
 
 
-            serialDataReceivedEvent.Set();
+            serialDataReceivedEvent.Set();*/
 
         }
 
@@ -322,15 +375,15 @@ namespace ioboard_tester
 
         private const int serialResponseTimeoutMilliseconds = 1000;
 
-        private byte[] getCommTestCmdBytes = { 0x58, 0x59, 0xF0, 0x01, 0xF1 };
-        private byte[] getSoftwareVerCmdBytes = { 0x58, 0x59, 0xF3, 0x01, 0xF2 };
-        private byte[] getHardwareVerCmdBytes = { 0x58, 0x59, 0xF2, 0x01, 0xF3 };
+        public byte[] getCommTestCmdBytes = { 0x58, 0x59, 0xF0, 0x01, 0xF1 };
+        public byte[] getSoftwareVerCmdBytes = { 0x58, 0x59, 0xF3, 0x01, 0xF2 };
+        public byte[] getHardwareVerCmdBytes = { 0x58, 0x59, 0xF2, 0x01, 0xF3 };
 
-        private byte[] getAllInputsCmdBytes = { 0x58, 0x59, 0xA0, 0x01, 0xA1 };
-        private byte[] getOutputStatesCmdBytes = { 0x58, 0x59, 0xA2, 0x01, 0xA2 };
-        private byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
+        public byte[] getAllInputsCmdBytes = { 0x58, 0x59, 0xA0, 0x01, 0xA1 };
+        public byte[] getOutputStatesCmdBytes = { 0x58, 0x59, 0xA2, 0x01, 0xA2 };
+        public byte[] getSwitchStatesCmdBytes = { 0x58, 0x59, 0xA3, 0x01, 0xA3 };
 
-        private byte[] setOutputStateCmdBytes(byte outputNum, byte state) //state: 0=high impedance, 1=enabled
+        public byte[] setOutputStateCmdBytes(byte outputNum, byte state) //state: 0=high impedance, 1=enabled
         {
 
             byte[] cmdBytes = { 0x58, 0x59, 0, 0x03, 0xB2, outputNum, state };
@@ -341,7 +394,7 @@ namespace ioboard_tester
 
             return cmdBytes;
         }
-        private byte[] setMeter1PulsesCmdBytes(int numPulses)  //Meter1 corresponds to OUT2
+        public byte[] setMeter1PulsesCmdBytes(int numPulses)  //Meter1 corresponds to OUT2
         {
 
             byte lowByteNumPulses = (byte)(numPulses & 0xFF);
@@ -356,7 +409,7 @@ namespace ioboard_tester
             return cmdBytes;
         }
 
-        private byte[] setMeter2PulsesCmdBytes(int numPulses)  //Meter2 corresponds to OUT8
+        public byte[] setMeter2PulsesCmdBytes(int numPulses)  //Meter2 corresponds to OUT8
         {
 
             byte lowByteNumPulses = (byte)(numPulses & 0xFF);
