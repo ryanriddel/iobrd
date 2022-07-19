@@ -241,7 +241,33 @@ namespace ioboard_tester
             baddog.clearErrors();
         }
 
-        
+        private void button11_Click_1(object sender, EventArgs e)
+        {
+            int nullCount = 0;
+            int errorCount = 0;
+            for(int i=0; i<1000; i++)
+            {
+                try
+                {
+                    byte[] testBytes = baddog.getInputStates();
+
+                    if (testBytes == null)
+                        testBytes = baddog.getInputStates();
+
+                    if (testBytes == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("NULL BYTES");
+                        nullCount++;
+                    }
+                }
+                catch(Exception a)
+                {
+                    errorCount++;
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine("TOTAL NULLS: " + nullCount + "   ERRORS:  " + errorCount);
+        }
     }
     
 }

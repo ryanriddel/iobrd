@@ -59,6 +59,7 @@ namespace ioboard_tester
             this.txtIONumInput = new System.Windows.Forms.TextBox();
             this.button12 = new System.Windows.Forms.Button();
             this.button13 = new System.Windows.Forms.Button();
+            this.button11 = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.panel3.SuspendLayout();
@@ -355,11 +356,22 @@ namespace ioboard_tester
             this.button13.UseVisualStyleBackColor = true;
             this.button13.Click += new System.EventHandler(this.button13_Click);
             // 
+            // button11
+            // 
+            this.button11.Location = new System.Drawing.Point(21, 401);
+            this.button11.Name = "button11";
+            this.button11.Size = new System.Drawing.Size(143, 34);
+            this.button11.TabIndex = 21;
+            this.button11.Text = "getInputs() x 100";
+            this.button11.UseVisualStyleBackColor = true;
+            this.button11.Click += new System.EventHandler(this.button11_Click_1);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(780, 465);
+            this.Controls.Add(this.button11);
             this.Controls.Add(this.button13);
             this.Controls.Add(this.button12);
             this.Controls.Add(this.panel3);
@@ -423,6 +435,7 @@ namespace ioboard_tester
         private System.Windows.Forms.Button button12;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button13;
+        private System.Windows.Forms.Button button11;
     }
 }
 

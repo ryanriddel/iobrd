@@ -51,6 +51,8 @@ class BadDogIOBoard
     public SerialPort _serialPort;
     private Thread serialParserThread;
 
+    byte lastSentCommandByte = 0;
+
     public BadDogIOBoard()
     {
             
@@ -234,7 +236,11 @@ class BadDogIOBoard
         }
         else if(commandByte == 0xD1)
         {
-            throw new Exception("The board didnt understand the command...");
+            // throw new Exception("The board didnt understand the command...");
+            //the board wants us to retransmit the message that initiated this response
+            //for now we'll just return null and let the caller handle the situation (e.x. by retrying the command)
+            synchronizationReturnValues[lastSentCommandByte] = null;
+            synchronizationEventDictionary[lastSentCommandByte].Set();
         }
         else if (synchronizationEventDictionary.ContainsKey(commandByte))
         {
@@ -331,10 +337,17 @@ class BadDogIOBoard
                     byte val;
                     do
                     {
+                        
                         if (!serialByteQueue.TryPeek(out val))
                         {
                             val = 0x58; //the queue is empty. exit the loop 
                         }
+                        else
+                        {
+                            if(val != 0x58)
+                                serialByteQueue.TryDequeue(out val);
+                        }
+
                     } while (val != 0x58);
                 }
             }
@@ -345,7 +358,7 @@ class BadDogIOBoard
         }
     }
 
-    //note that this function will return null if there is a timeout
+    //note that this function will return null if there is a timeout or error
     private byte[] doSerialTransaction(byte[] msg)
     {
         byte cmdByte = msg[4];
@@ -356,8 +369,8 @@ class BadDogIOBoard
         synchronizationReturnValues[cmdByte] = null;
 
         _serialPort.Write(msg, 0, msg.Length);
+        lastSentCommandByte = cmdByte;
 
-            
         if (synchronizationEventDictionary[cmdByte].WaitOne(serialResponseTimeoutMilliseconds))
         {
             byte[] res = synchronizationReturnValues[cmdByte];
